@@ -1,7 +1,7 @@
 ---
 layout: single
-title: "Tutorials"
-permalink: /tutorials/
+title: "Concepts"
+permalink: /concepts/
 author_profile: true
 ---
 

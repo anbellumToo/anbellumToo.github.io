@@ -23,7 +23,7 @@ paginate_path: "/page:num/"
 header_pages:
   - index.md
   - _pages/about.md
-  - _pages/tutorials.md
+  - _pages/concepts.md
   - _pages/projects.md
 
 # Footer links
@@ -44,8 +44,8 @@ social:
 author:
   name: "Annabella"
   avatar: "/assets/images/avatar.png"
-  bio: "Hardware Enthusiast"
-  location: "Somewhere on Earth"
+  bio: "Computer Engineering"
+  location: "UCSC"
   links:
     - label: "GitHub"
       icon: "fab fa-github"

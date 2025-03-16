@@ -1,10 +1,13 @@
 ---
 layout: single
-title: "My First Post"
+title: "Clock Domain Crossing"
 date: 2025-03-15
 categories: tutorials
 tags: [jekyll, minimal-mistakes]
 author_profile: true
 ---
 
-This is my first post using Minimal Mistakes.
+## 🔄 What is a Clock Domain Crossing?
+
+
+
