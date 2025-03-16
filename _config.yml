@@ -1,5 +1,5 @@
 # Site settings
-title: "Annabella's Blog"
+title: "Slug Silicon"
 description: "A Jekyll site using the Minimal Mistakes theme."
 baseurl: ""  # Keep empty for GitHub Pages user site (https://anbellumToo.github.io/)
 url: "https://anbellumToo.github.io"
@@ -23,9 +23,8 @@ paginate_path: "/page:num/"
 header_pages:
   - index.md
   - _pages/about.md
-  - _pages/blog.md
+  - _pages/tutorials.md
   - _pages/projects.md
-  - _pages/contact.md
 
 # Footer links
 footer:
@@ -45,7 +44,7 @@ social:
 author:
   name: "Annabella"
   avatar: "/assets/images/avatar.png"
-  bio: "Just another engineer."
+  bio: "Hardware Enthusiast"
   location: "Somewhere on Earth"
   links:
     - label: "GitHub"

@@ -6,4 +6,4 @@ collection: projects
 author_profile: true
 ---
 
-Here are some of my projects:
+### 🧩 Here's what I've been working on!
