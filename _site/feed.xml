@@ -1,1 +1,95 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-03-16T03:36:23-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Slug Silicon</title><subtitle>A Jekyll site using the Minimal Mistakes theme.</subtitle><author><name>Annabella</name></author><entry><title type="html">Clock Domain Crossing</title><link href="http://localhost:4000/concepts/2025/03/15/my-first-post.html" rel="alternate" type="text/html" title="Clock Domain Crossing" /><published>2025-03-15T00:00:00-07:00</published><updated>2025-03-15T00:00:00-07:00</updated><id>http://localhost:4000/concepts/2025/03/15/my-first-post</id><content type="html" xml:base="http://localhost:4000/concepts/2025/03/15/my-first-post.html"><![CDATA[<h2 id="-what-is-a-clock-domain-crossing">🔄 What is a Clock Domain Crossing?</h2>]]></content><author><name>Annabella</name></author><category term="concepts" /><category term="jekyll" /><category term="minimal-mistakes" /><summary type="html"><![CDATA[🔄 What is a Clock Domain Crossing?]]></summary></entry></feed>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-03-16T14:07:41-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Slug Silicon</title><subtitle>A Jekyll site using the Minimal Mistakes theme.</subtitle><author><name>Annabella</name></author><entry><title type="html">Clock Domain Crossing</title><link href="http://localhost:4000/concepts/2025/03/15/my-first-post.html" rel="alternate" type="text/html" title="Clock Domain Crossing" /><published>2025-03-15T00:00:00-07:00</published><updated>2025-03-15T00:00:00-07:00</updated><id>http://localhost:4000/concepts/2025/03/15/my-first-post</id><content type="html" xml:base="http://localhost:4000/concepts/2025/03/15/my-first-post.html"><![CDATA[<p><a href="#what-is-clock-domain-crossing">What is Clock Domain Crossing?</a></p>
+
+<p><a href="#clock-domain-crossing-solutions">Solutions</a></p>
+<ul>
+  <li><a href="#flip-flop-synchronizers">Flip-Flop Synchronizers</a></li>
+  <li><a href="#binary-and-gray-encoding">Binary and Gray Encoding</a></li>
+</ul>
+
+<p><a href="#fifo-example">FIFO Example</a></p>
+
+<h2 id="what-is-clock-domain-crossing">What is Clock Domain Crossing?</h2>
+
+<p>Clock Domain Crossing (CDC) occurs when data transfers between different clock domains that may differ in frequency or phase. In a multi-clock system, data is first updated synchronously with the edge of the source clock, then it must be safely captured and updated synchronously in the destination clock domain. While simple in theory, there are challenging aspects to consider when attempting to maintain the reliability of data transfer. Signals that originate from one clock domain may not meet the setup and hold time required by the destination clock. Incorrect handling of CDC will lead to timing violations, metastability, data corruption, and other unpredictable behaviors in digital systems.</p>
+
+<p>Though timing issues are a concern when implementing CDC, there are many performance benefits to using multiple clock domains in a digital design.</p>
+<ul>
+  <li>Decrease the clock rate for some parts of the design while using a higher clock rate when necessary in order to improve power efficiency.</li>
+  <li>Data throughput can be improved for a high-speed communication protocol while internal interactions operate at a lower clock rate.</li>
+  <li>There is more design flexibility when utilizing multiple clocks in a single design.</li>
+  <li>Improves clock tree synthesis results for skew and jitter when there are multiple localized clocks rather than one global clock.</li>
+</ul>
+
+<h2 id="clock-domain-crossing-solutions">Clock Domain Crossing Solutions</h2>
+
+<p>To achieve reliable data transfer, various CDC techniques are used. Some strategies include flip-flop synchronizers, handshake protocols, and FIFO-based solutions. FIFO buffers are particularly useful when handling bulk data transfers across clock domains, which we will explore in detail.</p>
+
+<h4 id="flip-flop-synchronizers">Flip-Flop Synchronizers</h4>
+
+<p>Among the most simple ways to solve CDC timing issues is through a flip-flop synchronizer. This uses (usually) two sequential flip-flops triggered by the destination clock. The flip-flop synchronizer solution will allow enough time for a signal to settle and avoid metastability.</p>
+
+<pre><code class="language-Systemverilog">module ff_synchronizer (
+    input  [0:0] clk_dest_i,      // destination clock 
+    input  [0:0] rst_dest_i,      // destination reset
+    input  [0:0] async_signal_i,  // async input signal
+    output [0:0] sync_signal_o    // sync output signal
+);
+    logic [0:0] stage1_l;  // first stage 
+    logic [0:0] stage2_l;  // second stage 
+
+    // two sequential flip-flops
+    always_ff @(posedge clk_dest) begin
+        if (rst_dest_i) begin
+            stage1_l &lt;= 1'b0;
+            stage2_l &lt;= 1'b0;           
+        end
+        else begin
+            stage1_l &lt;= async_signal_i;
+            stage2_l &lt;= stage1_l;
+        end
+    end
+
+    assign sync_signal_o = stage2_l;
+
+endmodule
+</code></pre>
+
+<h4 id="binary-and-gray-encoding">Binary and Gray Encoding</h4>
+
+<p>Transferring a data bus is more challenging as binary encoding is unsafe due to the possibility of multiple bits changing in one increment or decrement. This may cause data corruption from some bits updating on the first destination clock synchronizer while other bits remain in their previous state. This is a massive problem for digital design, for example, think about a state machine encoding. If state changes and is passed to the destination clock, corrupted bits may cause the state encoding to point to a nonexistent state.</p>
+
+<p>Instead, Gray code is used because only one bit changes per increment or decrement, making it safer for synchronization as it will either stay in the form of the previous data or update to the correct current data.</p>
+
+<pre><code class="language-Systemverilog">module bin_to_gray
+  #(parameter width_p = 5)
+  (input [width_p - 1 : 0] bin_i
+  ,output [width_p - 1 : 0] gray_o);
+
+   genvar i;
+    generate
+      for(i = width_p -1; i &gt; 0; i = i - 1) begin
+        assign gray_o[i - 1] = bin_i[i] ^ bin_i[i - 1];
+      end
+    endgenerate
+
+    assign gray_o[width_p-1] = bin_i[width_p-1];
+
+endmodule
+</code></pre>
+
+<pre><code class="language-Systemverilog">module gray_to_bin
+  #(parameter width_p = 5)
+   (input [width_p - 1 : 0] gray_i
+    ,output [width_p - 1 : 0] bin_o);
+
+  genvar i;
+  generate
+    for(i = 0; i &lt; width_p; i++) begin
+      assign bin_o[i] = ^(gray_i &gt;&gt; i);
+    end
+  endgenerate
+
+endmodule
+</code></pre>
+
+<h2 id="fifo-example">FIFO Example</h2>]]></content><author><name>Annabella</name></author><category term="concepts" /><category term="jekyll" /><category term="minimal-mistakes" /><summary type="html"><![CDATA[What is Clock Domain Crossing? Solutions Flip-Flop Synchronizers Binary and Gray Encoding FIFO Example What is Clock Domain Crossing? Clock Domain Crossing (CDC) occurs when data transfers between different clock domains that may differ in frequency or phase. In a multi-clock system, data is first updated synchronously with the edge of the source clock, then it must be safely captured and updated synchronously in the destination clock domain. While simple in theory, there are challenging aspects to consider when attempting to maintain the reliability of data transfer. Signals that originate from one clock domain may not meet the setup and hold time required by the destination clock. Incorrect handling of CDC will lead to timing violations, metastability, data corruption, and other unpredictable behaviors in digital systems. Though timing issues are a concern when implementing CDC, there are many performance benefits to using multiple clock domains in a digital design. Decrease the clock rate for some parts of the design while using a higher clock rate when necessary in order to improve power efficiency. Data throughput can be improved for a high-speed communication protocol while internal interactions operate at a lower clock rate. There is more design flexibility when utilizing multiple clocks in a single design. Improves clock tree synthesis results for skew and jitter when there are multiple localized clocks rather than one global clock. Clock Domain Crossing Solutions To achieve reliable data transfer, various CDC techniques are used. Some strategies include flip-flop synchronizers, handshake protocols, and FIFO-based solutions. FIFO buffers are particularly useful when handling bulk data transfers across clock domains, which we will explore in detail. Flip-Flop Synchronizers Among the most simple ways to solve CDC timing issues is through a flip-flop synchronizer. This uses (usually) two sequential flip-flops triggered by the destination clock. The flip-flop synchronizer solution will allow enough time for a signal to settle and avoid metastability. module ff_synchronizer ( input [0:0] clk_dest_i, // destination clock input [0:0] rst_dest_i, // destination reset input [0:0] async_signal_i, // async input signal output [0:0] sync_signal_o // sync output signal ); logic [0:0] stage1_l; // first stage logic [0:0] stage2_l; // second stage // two sequential flip-flops always_ff @(posedge clk_dest) begin if (rst_dest_i) begin stage1_l &lt;= 1'b0; stage2_l &lt;= 1'b0; end else begin stage1_l &lt;= async_signal_i; stage2_l &lt;= stage1_l; end end assign sync_signal_o = stage2_l; endmodule Binary and Gray Encoding Transferring a data bus is more challenging as binary encoding is unsafe due to the possibility of multiple bits changing in one increment or decrement. This may cause data corruption from some bits updating on the first destination clock synchronizer while other bits remain in their previous state. This is a massive problem for digital design, for example, think about a state machine encoding. If state changes and is passed to the destination clock, corrupted bits may cause the state encoding to point to a nonexistent state. Instead, Gray code is used because only one bit changes per increment or decrement, making it safer for synchronization as it will either stay in the form of the previous data or update to the correct current data. module bin_to_gray #(parameter width_p = 5) (input [width_p - 1 : 0] bin_i ,output [width_p - 1 : 0] gray_o); genvar i; generate for(i = width_p -1; i &gt; 0; i = i - 1) begin assign gray_o[i - 1] = bin_i[i] ^ bin_i[i - 1]; end endgenerate assign gray_o[width_p-1] = bin_i[width_p-1]; endmodule module gray_to_bin #(parameter width_p = 5) (input [width_p - 1 : 0] gray_i ,output [width_p - 1 : 0] bin_o); genvar i; generate for(i = 0; i &lt; width_p; i++) begin assign bin_o[i] = ^(gray_i &gt;&gt; i); end endgenerate endmodule FIFO Example]]></summary></entry></feed>
