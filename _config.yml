@@ -1,0 +1,64 @@
+# Site settings
+title: "Annabella's Blog"
+description: "A Jekyll site using the Minimal Mistakes theme."
+baseurl: ""  # Keep empty for GitHub Pages user site (https://anbellumToo.github.io/)
+url: "https://anbellumToo.github.io"
+
+remote_theme: "mmistakes/minimal-mistakes@4.26.2"
+
+plugins:
+  - jekyll-include-cache
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+  - jekyll-paginate
+  - jekyll-archives
+
+minimal_mistakes_skin: "aqua" 
+
+# Pagination settings
+paginate: 5
+paginate_path: "/page:num/"
+
+# Navigation (header)
+header_pages:
+  - index.md
+  - about.md
+  - blog.md
+  - projects.md
+  - contact.md
+
+# Footer links
+footer:
+  links:
+    - label: "GitHub"
+      icon: "fab fa-github"
+      url: "https://github.com/anbellumToo"
+    - label: "LinkedIn"
+      icon: "fab fa-linkedin"
+      url: "https://www.linkedin.com/in/annabella-newton/"
+
+social:
+  links:
+    - "https://github.com/anbellumToo"
+    - "https://linkedin.com/in/annabella-newton"
+
+author:
+  name: "Annabella"
+  avatar: "/assets/images/avatar.png"
+  bio: "Just another engineer."
+  location: "Somewhere on Earth"
+  links:
+    - label: "GitHub"
+      icon: "fab fa-github"
+      url: "https://github.com/anbellumToo"
+
+sidebar:
+  nav: "main"
+
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+  - node_modules/
+  - vendor/
