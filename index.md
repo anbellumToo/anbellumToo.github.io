@@ -4,4 +4,12 @@ title: "Welcome to Annabella's Blog"
 author_profile: true
 ---
 
-This is my homepage content. Welcome!
+
+## Explore My Site 🌍
+
+- [📖 About Me](/about/)
+- [💻 Projects](/projects/)
+- [📝 Blog](/blog/)
+- [📧 Contact](/contact/)
+
+---

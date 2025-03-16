@@ -16,17 +16,16 @@ plugins:
 
 minimal_mistakes_skin: "aqua" 
 
-# Pagination settings
 paginate: 5
 paginate_path: "/page:num/"
 
 # Navigation (header)
 header_pages:
   - index.md
-  - about.md
-  - blog.md
-  - projects.md
-  - contact.md
+  - _pages/about.md
+  - _pages/blog.md
+  - _pages/projects.md
+  - _pages/contact.md
 
 # Footer links
 footer:
@@ -55,6 +54,8 @@ author:
 
 sidebar:
   nav: "main"
+
+include: ["_pages"]
 
 exclude:
   - README.md
