@@ -1,7 +1,7 @@
 main:
   - title: "Home"
     url: /
-  - title: "Concepts"
+  - title: "Concepts & Tutorials "
     url: /concepts/
   - title: "Projects"
     url: /projects/
