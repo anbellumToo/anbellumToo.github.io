@@ -44,8 +44,7 @@ social:
 author:
   name: "Annabella"
   avatar: "/assets/images/avatar.png"
-  bio: "Computer Engineering"
-  location: "UCSC"
+  bio: "Computer Engineering @ UCSC"
   links:
     - label: "GitHub"
       icon: "fab fa-github"
@@ -62,3 +61,5 @@ exclude:
   - Gemfile.lock
   - node_modules/
   - vendor/
+
+search: true
