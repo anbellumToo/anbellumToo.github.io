@@ -11,8 +11,8 @@ author_profile: true
 [Solutions](#clock-domain-crossing-solutions)
 - [Flip-Flop Synchronizers](#flip-flop-synchronizers)
 - [Binary and Gray Encoding](#binary-and-gray-encoding)
-
-[FIFO Example](#fifo-example)
+- [Pulse Stretching](#pulse-stretching)
+- [FIFO Example](#fifo-example)
 
 ## What is Clock Domain Crossing?
 
@@ -99,6 +99,49 @@ module gray_to_bin
 
 endmodule
 ```
+## Pulse Stretching
+
+When transferring signals from a fast clock domain to a slow clock domain, the primary challenge is ensuring that the signal remains active long enough for the slow clock to reliably sample it. Without proper handling, a short-lived pulse in the fast domain might be missed entirely in the slow domain. This section explains how to address this issue using pulse stretching and provides practical guidelines for implementation.
+
+Consider a scenario where:
+
+- Fast Clock (CLK_FAST): 100 MHz (10 ns period).
+- Slow Clock (CLK_SLOW): 25 MHz (40 ns period).
+
+If a pulse in the fast domain lasts only 1 clock cycle (10 ns), it might not align with the rising edge of the slow clock, or it might violate setup/hold requirements. As a result, the slow domain could miss the pulse entirely.
+
+To ensure the slow domain reliably detects the pulse, the signal must be stretched in the fast domain. The goal is to make the pulse active for at least 2 clock cycles of the slow domain (80 ns in this example).
+
+```verilog
+module fast_to_slow_sync (
+    input  clk_fast,
+    input  rst_fast,
+    input  clk_slow,
+    input  rst_slow,
+    input  pulse_fast_i,
+    output pulse_slow_o
+);
+    logic [7:0] stretch_ff;
+    logic stretched_pulse;
+    logic [1:0] sync_ff;
+
+    always_ff @(posedge clk_fast) begin
+        if (rst_fast) stretch_ff <= 8'b00000000;
+        else          stretch_ff <= {stretch_ff[6:0], pulse_fast_i};
+    end
+
+    assign stretched_pulse = |stretch_ff;
+
+    always_ff @(posedge clk_slow) begin
+        if (rst_slow) sync_ff <= 2'b00;
+        else          sync_ff <= {sync_ff[0], stretched_pulse};
+    end
+
+    assign pulse_slow_o = sync_ff[1];
+
+endmodule
+```
+
 
 
 ## FIFO Example
