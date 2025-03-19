@@ -32,7 +32,7 @@ To achieve reliable data transfer, various CDC techniques are used. Some strateg
 
 Among the most simple ways to solve CDC timing issues is through a flip-flop synchronizer. This uses (usually) two sequential flip-flops triggered by the destination clock. The flip-flop synchronizer solution will allow enough time for a signal to settle and avoid metastability.
 
-```Systemverilog
+```verilog
 module ff_synchronizer (
     input  [0:0] clk_dest_i,      // destination clock 
     input  [0:0] rst_dest_i,      // destination reset
@@ -66,7 +66,7 @@ Transferring a data bus is more challenging as binary encoding is unsafe due to 
 
 Instead, Gray code is used because only one bit changes per increment or decrement, making it safer for synchronization as it will either stay in the form of the previous data or update to the correct current data.
 
-```Systemverilog
+```verilog
 module bin_to_gray
   #(parameter width_p = 5)
   (input [width_p - 1 : 0] bin_i
@@ -84,7 +84,7 @@ module bin_to_gray
 endmodule
 ```
 
-```Systemverilog
+```verilog
 module gray_to_bin
   #(parameter width_p = 5)
    (input [width_p - 1 : 0] gray_i
@@ -102,3 +102,209 @@ endmodule
 
 
 ## FIFO Example
+
+With the previous tools, we can implement a CDC fifo that is capable of transfering bulk data without the threat of data corruption issues. In order to create the CDC FIFO, we must initialize a RAM interface that will read data synchronized to the producer clock and write data synchronized to the consumer clock.
+
+```verilog
+module ram_1r1w_sync
+  #(parameter [31:0] width_p = 8
+  ,parameter [31:0] depth_p = 512
+  ,parameter string filename_p = "memory_init_file.bin")
+  (input [0:0] pclk_i
+  ,input [0:0] cclk_i
+  ,input [0:0] preset_i
+  ,input [0:0] creset_i
+
+  ,input [0:0] wr_valid_i
+  ,input [width_p-1:0] wr_data_i
+  ,input [$clog2(depth_p) - 1 : 0] wr_addr_i
+
+  ,input [0:0] rd_valid_i
+  ,input [$clog2(depth_p) - 1 : 0] rd_addr_i
+  ,output [width_p-1:0] rd_data_o);
+   logic [width_p-1:0] ram [depth_p-1:0];
+
+   initial begin
+      for (int i = 0; i < depth_p; i++) begin
+        ram[i] = '0;
+      end
+   end
+
+   logic [width_p-1:0] rd_data_l;
+
+   always @(posedge pclk_i) begin
+      if(preset_i) begin
+         rd_data_l <= '0;
+      end 
+      else if(rd_valid_i) begin
+          rd_data_l <= ram[rd_addr_i];
+      end
+   end
+
+   always @(posedge cclk_i) begin
+      if(creset_i) begin
+         ram[wr_addr_i] <= ram[wr_addr_i];
+      end 
+      else if(wr_valid_i) begin
+          ram[wr_addr_i] <= wr_data_i;
+      end
+   end
+
+   assign rd_data_o = rd_data_l;
+
+endmodule
+```
+
+Now we implement the CDC FIFO by connecting the synchronizers, gray encoding, and the two clock port RAM module. We use the RAM module to transfer data between the two clock domains safely. Within the FIFO implementation, the read and write addresses must be transferred between clock domains in order to facilitate the logic for the ready valid handshakes between interfaces. 
+
+```verilog
+module fifo_1r1w_cdc
+ #(parameter [31:0] width_p = 32
+  ,parameter [31:0] depth_log2_p = 8
+  )
+   // the "c" for consumer, and "p" for producer interfaces. 
+  (input [0:0] cclk_i
+  ,input [0:0] creset_i
+  ,input [width_p-1:0] cdata_i
+  ,input [0:0] cvalid_i
+  ,output [0:0] cready_o 
+
+  ,input [0:0] pclk_i
+  ,input [0:0] preset_i
+  ,output [0:0] pvalid_o 
+  ,output [width_p-1:0] pdata_o 
+  ,input [0:0] pready_i
+  );
+
+    wire [0:0] full;
+    wire [0:0] empty;
+   
+    wire [0:0] en_w;
+    wire [0:0] en_r;
+    wire [width_p-1:0] ram_o;
+
+    logic [depth_log2_p:0] wr_add, wr_add_delay, 
+    wr_add_bin2gray, wr_add_sync1, wr_add_sync2, 
+    crossed_wr_add, rd_add, rd_add_delay, 
+    rd_add_bin2gray, rd_add_sync1, rd_add_sync2, 
+    crossed_rd_add, rd_add_next;
+
+    assign en_w = cvalid_i && cready_o;
+    assign en_r = pready_i && pvalid_o;
+
+    assign full =(wr_add[depth_log2_p-1:0] === 
+        crossed_rd_add[depth_log2_p-1:0]) && 
+        (wr_add[depth_log2_p] !== 
+        crossed_rd_add[depth_log2_p]);
+    assign empty = (crossed_wr_add === rd_add);
+    assign cready_o = ~full;
+    assign pvalid_o = ~empty;
+
+  // cross for wr_add from consumer to producer side
+  // convert the write address to gray encoding
+  bin2gray
+  #(.width_p(depth_log2_p+1))
+  bin2gray_inst_wr_add
+  (.bin_i(wr_add)
+  ,.gray_o(wr_add_bin2gray));
+
+  //delay the grey encoded write address for 1 cc
+  always_ff @(posedge cclk_i) begin 
+    if (creset_i) begin
+      wr_add_delay <= '0;
+    end
+    else begin
+      wr_add_delay <= wr_add_bin2gray;
+    end
+  end
+
+  // two stages of synchronizers
+  always_ff @(posedge pclk_i) begin
+    if(preset_i) begin 
+      wr_add_sync1 <= '0; 
+      wr_add_sync2 <= '0;
+    end
+    else begin 
+      wr_add_sync1 <= wr_add_delay;
+      wr_add_sync2 <= wr_add_sync1;
+    end
+  end
+
+  // convert write address to bin encoding
+  gray2bin
+  #(.width_p(depth_log2_p+1))
+    gray2bin_inst_wr_add
+   (.gray_i(wr_add_sync2)
+    ,.bin_o(crossed_wr_add));  
+
+  // cross for rd_add from producer to consumer side
+  // convert to gray encoding
+  bin_to_gray
+  #(.width_p(depth_log2_p+1))
+  bin2gray_inst_rd_add
+  (.bin_i(rd_add)
+  ,.gray_o(rd_add_bin2gray));
+
+  // two stages of synchronizers
+  always_ff @(posedge cclk_i) begin
+    if(creset_i) begin 
+      rd_add_sync1 <= '0; 
+      rd_add_sync2 <= '0;
+    end
+    else begin 
+      rd_add_sync1 <= rd_add_bin2gray;
+      rd_add_sync2 <= rd_add_sync1;
+    end
+  end
+
+  // convert back to bin encoding
+  gray_to_bin
+  #(.width_p(depth_log2_p+1))
+    gray2bin_inst_rd_add
+   (.gray_i(rd_add_sync2)
+    ,.bin_o(crossed_rd_add));  
+
+  always_ff @(posedge cclk_i) begin
+    if(creset_i) begin 
+      wr_add <= '0;
+    end
+    else if (en_w) begin
+      wr_add <= wr_add + 1;
+    end
+  end
+
+  always_ff @(posedge pclk_i) begin
+    if (preset_i) begin
+      rd_add <= '0;
+    end 
+    else if (en_r) begin
+      rd_add <= rd_add + 1;
+    end
+  end
+
+  always_comb begin 
+    rd_add_next = rd_add;
+    if(en_r) begin
+      rd_add_next = rd_add + 1;
+    end
+  end
+
+  ram_1r1w_sync
+  #(.width_p(width_p), 
+    .depth_p(1<<depth_log2_p), 
+    .filename_p()) 
+    ram_1r1w_sync_inst
+   (.pclk_i(pclk_i), 
+   .cclk_i(cclk_i), 
+    .preset_i(preset_i),
+    .creset_i(creset_i),
+    .wr_valid_i(en_w),
+    .wr_data_i(cdata_i),
+    .wr_addr_i(wr_add[depth_log2_p-1:0]),
+    .rd_valid_i(1'b1),
+    .rd_addr_i(rd_add_next[depth_log2_p-1:0]), 
+    .rd_data_o(pdata_o));
+
+endmodule
+```
+
